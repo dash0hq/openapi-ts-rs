@@ -9,7 +9,12 @@ It is a native binary with no Node or TypeScript dependency, so it is unaffected
 openapi-ts-rs spec.yml -o spec.gen.d.ts   # warns about $refs that do not resolve
 openapi-ts-rs spec.yml --strict           # ...or fails on them
 openapi-ts-rs spec.yml --named-exports    # also exports every schema by name
+openapi-ts-rs api/spec.yml --ref-root .   # keys external files relative to . instead of api/
 ```
+
+`external[...]` keys each referenced file by its path relative to the spec's directory. Moving the
+spec changes those keys and breaks code that spells them out. `--ref-root <dir>` keys them relative
+to `<dir>` instead, so a spec can move without renaming its external types.
 
 `--named-exports` appends `export type Pet = components["schemas"]["Pet"];` for every schema under
 `components.schemas`, in the root file and in every referenced file, so code can import `Pet`

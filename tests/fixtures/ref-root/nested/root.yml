@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: ref-root
+  version: "1"
+paths: {}
+components:
+  schemas:
+    Owner:
+      type: object
+      properties:
+        pet:
+          $ref: '../shared/pets.yml#/components/schemas/Pet'
