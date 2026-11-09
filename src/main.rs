@@ -1,6 +1,6 @@
 //! openapi-ts-rs: generates TypeScript types from OpenAPI 3 specs in openapi-typescript 6.7.0's shape.
 //!
-//! Usage: openapi-ts-rs <spec.yml> [-o <out.d.ts>] [--strict] [--named-exports]
+//! Usage: openapi-ts-rs <spec.yml> [-o <out.d.ts>] [--strict] [--named-exports] [--ref-root <dir>]
 
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
@@ -13,16 +13,17 @@ mod yaml;
 use anyhow::{Result, bail};
 use std::path::PathBuf;
 
-const USAGE: &str = "usage: openapi-ts-rs <spec.yml> [-o <out.d.ts>] [--strict] [--named-exports]\n\n  --strict         fail when a $ref does not resolve (default: warn)\n  --named-exports  also export every components.schemas entry by name";
+const USAGE: &str = "usage: openapi-ts-rs <spec.yml> [-o <out.d.ts>] [--strict] [--named-exports] [--ref-root <dir>]\n\n  --strict          fail when a $ref does not resolve (default: warn)\n  --named-exports   also export every components.schemas entry by name\n  --ref-root <dir>  key external[...] by path relative to <dir> (default: the spec's directory)";
 
 fn run() -> Result<()> {
     let mut args = std::env::args().skip(1);
-    let (mut input, mut output, mut strict, mut named_exports) = (None, None, false, false);
+    let (mut input, mut output, mut strict, mut named_exports, mut ref_root) = (None, None, false, false, None);
     while let Some(a) = args.next() {
         match a.as_str() {
             "-o" | "--output" => output = args.next().map(PathBuf::from),
             "--strict" => strict = true,
             "--named-exports" => named_exports = true,
+            "--ref-root" => ref_root = args.next().map(PathBuf::from),
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(());
@@ -37,7 +38,7 @@ fn run() -> Result<()> {
     }
     let Some(input) = input else { bail!("{USAGE}") };
     let t = std::time::Instant::now();
-    let spec = load::Spec::load(&input)?;
+    let spec = load::Spec::load(&input, ref_root.as_deref())?;
     let t1 = t.elapsed();
     let g = emit::Gen::new(&spec);
     let mut ts = g.generate();

@@ -64,9 +64,11 @@ impl Loaded {
 
 pub struct Spec {
     pub root: PathBuf,
+    /// Directory that external file ids are relative to; the root file's directory by default.
+    ref_root: PathBuf,
     /// Every file reachable from the root, parsed in parallel ahead of the ordered pass.
     parsed: Parsed,
-    /// Keyed by path relative to the root file's directory; the root itself is `"."`.
+    /// Keyed by path relative to `ref_root`; the root itself is `"."`.
     /// Ordered depth-first in reference order, like openapi-typescript's loader.
     pub files: IndexMap<String, File>,
 }
@@ -222,15 +224,20 @@ fn get_hint(p: &[Seg], start: Kind) -> Kind {
 }
 
 impl Spec {
-    pub fn load(input: &Path) -> Result<Spec> {
-        let root = normalize(&std::env::current_dir()?.join(input));
-        let mut spec = Spec { root: root.clone(), parsed: parse_all(&root), files: IndexMap::new() };
+    pub fn load(input: &Path, ref_root: Option<&Path>) -> Result<Spec> {
+        let cwd = std::env::current_dir()?;
+        let root = normalize(&cwd.join(input));
+        let ref_root = match ref_root {
+            Some(dir) => normalize(&cwd.join(dir)),
+            None => root.parent().unwrap().to_path_buf(),
+        };
+        let mut spec = Spec { root: root.clone(), ref_root, parsed: parse_all(&root), files: IndexMap::new() };
         spec.load_file(&root, Kind::Document)?;
         Ok(spec)
     }
 
     pub fn id_of(&self, path: &Path) -> String {
-        if path == self.root { ".".into() } else { relative(self.root.parent().unwrap(), path) }
+        if path == self.root { ".".into() } else { relative(&self.ref_root, path) }
     }
 
     fn load_file(&mut self, path: &Path, kind: Kind) -> Result<()> {
